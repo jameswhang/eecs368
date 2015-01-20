@@ -144,10 +144,23 @@ int main(int argc, char** argv) {
 ////////////////////////////////////////////////////////////////////////////////
 void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 {
-	//Interface host call to the device kernel code and invoke the kernel
-	cudaMalloc(&M, MATRIX_SIZE);
-        cudaMemcpy(&M);
-	cudaMalloc(&N, MATRIX_SIZE);
+	float *Md, Nd, Pd;
+
+
+	// Allocate and load M, N to device memory
+	cudaMalloc(&Md, MATRIX_SIZE);
+        cudaMemcpy(Md, M, MATRIX_SIZE, cudaMemcpyHostToDevice);
+
+	cudaMalloc(&Nd, MATRIX_SIZE);
+	cudaMemcpy(Nd, N, MATRIX_SIZE, cudaMemcpyHostToDevice);
+	
+	// Allocate P into device memory
+	cudaMalloc(&Pd, MATRIX_SIZE);	
+
+	// Multiply the matrix in the kernel
+	MatrixMulKernel(M, N, P);
+
+		
 	
 	
 	
