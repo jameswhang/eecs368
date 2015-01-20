@@ -52,13 +52,13 @@
 __global__ void MatrixMulKernel(Matrix M, Matrix N, Matrix P)
 {
 	//Multiply the two matrices
-
-
-
-
-
-
-
+	float Pvalue = 0;
+	for(int i = 0; i < MATRIX_SIZE; i++) {
+		float Melement = M.elements[M.width * threadIdx.y + i];
+		float Nelement = N.elements[i * M.width + threadIdx.x];
+		Pvalue += Melement * Nelement;	
+	}
+	P.elements[threadIdx.y * M.width + threadIdx.x] = Pvalue;
 }
 
 #endif // #ifndef _MATRIXMUL_KERNEL_H_

@@ -144,28 +144,29 @@ int main(int argc, char** argv) {
 ////////////////////////////////////////////////////////////////////////////////
 void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 {
-	float *Md, Nd, Pd;
-
+	dim3 DimGrid(1, 1);
+	dim3 DimBlock(MATRIX_SIZE, MATRIX_SIZE);
 
 	// Allocate and load M, N to device memory
-	cudaMalloc(&Md, MATRIX_SIZE);
-        cudaMemcpy(Md, M, MATRIX_SIZE, cudaMemcpyHostToDevice);
+	Matrix Md = AllocateDeviceMatrix(M);
+	Matrix Nd = AllocateDeviceMatrix(N);
+	Matrix Pd = AllocateDeviceMatrix(P);
 
-	cudaMalloc(&Nd, MATRIX_SIZE);
-	cudaMemcpy(Nd, N, MATRIX_SIZE, cudaMemcpyHostToDevice);
+	CopyToDeviceMatrix(Md, M);
+	CopyToDeviceMatrix(Nd, N);
 	
-	// Allocate P into device memory
-	cudaMalloc(&Pd, MATRIX_SIZE);	
-
 	// Multiply the matrix in the kernel
-	MatrixMulKernel(M, N, P);
+	MatrixMulKernel<<<DimGrid,DimBlock>>>(Md, Nd, Pd);
 
+	// Wait for the device memory to synchronize
+	cudaThreadSynchronize();
+
+	// Copy back to host
+	CopyFromDeviceMatrix(P, Pd);
 		
-	
-	
-	
-	
-	
+	cudaFree((void*)&Md);
+	cudaFree((void*)&Nd);
+	cudaFree((void*)&Pd);	
 }
 
 // Allocate a device matrix of same size as M.
