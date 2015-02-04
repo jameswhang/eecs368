@@ -51,8 +51,28 @@
 // Matrix multiplication kernel thread specification
 __global__ void MatrixMulKernel(Matrix M, Matrix N, Matrix P)
 {
+  int tile_width = 32;
+  __shared__ float Mds[32][32];
+  __shared__ float Nds[32][32];
 
+  // Identify the row and column of Pd element to compute
+  int Row = blockIdx.y * tile_width + threadIdx.y;
+  int Col = blockIdx.x * tile_width + threadIdx.x;
+  int Width = P.width;
 
+  float pValue = 0;
+  // Loop over Md and Nd tiles to compute Pd element.
+  for (int m = 0; m < P.width/tile_width; m++) {
+    Mds[threadIdx.y][threadIdx.x] = M.elements[Row*Width + (m * tile_width + threadIdx.x)];
+    Nds[threadIdx.y][threadIdx.x] = N.elements[Col + (m * tile_width + threadIdx.y) * Width];
+
+    // Synchronize
+    __syncthreads();
+    for (int k = 0; k < tile_width; k++) {
+      pValue += Mds[threadIdx.y][k] * Nds[k][threadIdx.y];
+    __syncthreads();
+  }
+  P.elements[Row*Width+Col] = pValue;
 }
 
 #endif // #ifndef _MATRIXMUL_KERNEL_H_

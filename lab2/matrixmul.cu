@@ -142,6 +142,8 @@ int main(int argc, char** argv) {
 ////////////////////////////////////////////////////////////////////////////////
 void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 {
+	// FIX: 16 or 32
+	int tile_width = 32;
 	// Load M and N to the device
 	Matrix Md = AllocateDeviceMatrix(M);
 	CopyToDeviceMatrix(Md, M);
@@ -153,9 +155,13 @@ void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 	CopyToDeviceMatrix(Pd, P); // Clear memory
 
 	// Setup the execution configuration
+	//dim3 threads(block_size, block_size);
+	dim3 dimGrid(M.height/tile_width, N.width/tile_width);
+	dim3 dimBlock(tile_width, tile_width);
 
 	// Launch the device computation threads!
-
+	MatrixMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd);
+	
 	// Read P from the device
 	CopyFromDeviceMatrix(P, Pd); 
 
