@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
 void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 {
 	// FIX: 16 or 32
-	int tile_width = 32;
+	int tile_width = 16;
 	// Load M and N to the device
 	Matrix Md = AllocateDeviceMatrix(M);
 	CopyToDeviceMatrix(Md, M);
@@ -165,6 +165,8 @@ void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 	// Read P from the device
 	CopyFromDeviceMatrix(P, Pd); 
 
+	printf("%lf", P.elements[0]);
+	
 	// Free device matrices
 	FreeDeviceMatrix(&Md);
 	FreeDeviceMatrix(&Nd);
