@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 	if(argc != 5 && argc != 4) 
 	{
 		// Allocate and initialize the matrices
-		M  = AllocateMatrix(rand() % 1024, rand() % 1024, 1);
+		M  = AllocateMatrix(rand() % 1024,  rand() % 1024, 1);
 		N  = AllocateMatrix(M.width, rand() % 1024, 1);
 		P  = AllocateMatrix(M.height, N.width, 0);
 	}
@@ -110,12 +110,13 @@ int main(int argc, char** argv) {
 
 	// M * N on the device
 	MatrixMulOnDevice(M, N, P);
-    
+	WriteFile(P, "p.txt");
+  
 	printf("GPU computation complete\n");
 	// compute the matrix multiplication on the CPU for comparison
 	Matrix reference = AllocateMatrix(P.height, P.width, 0);
 	computeGold(reference.elements, M.elements, N.elements, M.height, M.width, N.width);
-        
+        WriteFile(reference, "ref.txt");
 	printf("CPU computation complete\n");
 	// in this case check if the result is equivalent to the expected soluion
 	CUTBoolean res = cutComparefe(reference.elements, P.elements, P.height*P.width, 0.001f);
@@ -142,8 +143,7 @@ int main(int argc, char** argv) {
 ////////////////////////////////////////////////////////////////////////////////
 void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 {
-	// FIX: 16 or 32
-	int tile_width = 16;
+	const int TILE_WIDTH = 32;
 	// Load M and N to the device
 	Matrix Md = AllocateDeviceMatrix(M);
 	CopyToDeviceMatrix(Md, M);
@@ -155,18 +155,13 @@ void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 	CopyToDeviceMatrix(Pd, P); // Clear memory
 
 	// Setup the execution configuration
-	//dim3 threads(block_size, block_size);
-	dim3 dimGrid(M.height/tile_width, N.width/tile_width);
-	dim3 dimBlock(tile_width, tile_width);
+	dim3 dimBlock(TILE_WIDTH, TILE_WIDTH, 1);
+	dim3 dimGrid((P.width - 1)/TILE_WIDTH + 1, (P.height - 1)/TILE_WIDTH + 1, 1);
 
 	// Launch the device computation threads!
 	MatrixMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd);
-	
 	// Read P from the device
-	CopyFromDeviceMatrix(P, Pd); 
-
-	printf("%lf", P.elements[0]);
-	
+	CopyFromDeviceMatrix(P, Pd);
 	// Free device matrices
 	FreeDeviceMatrix(&Md);
 	FreeDeviceMatrix(&Nd);

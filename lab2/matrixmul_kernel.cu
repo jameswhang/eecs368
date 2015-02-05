@@ -43,46 +43,56 @@
 #include <stdio.h>
 #include "matrixmul.h"
 
+
 ////////////////////////////////////////////////////////////////////////////////
 //! Simple test kernel for device functionality
 //! @param g_idata  input data in global memory
 //! @param g_odata  output data in global memory
 ////////////////////////////////////////////////////////////////////////////////
 // Matrix multiplication kernel thread specification
-__global__ void MatrixMulKernel(Matrix M, Matrix N, Matrix P)
+__global__ void MatrixMulKernel(Matrix Md, Matrix Nd, Matrix Pd)
 {
-  
-  int tile_width = 32;
-  __shared__ float Mds[32][32];
-  __shared__ float Nds[32][32];
+	const int TILE_WIDTH = 32;
 
-  // Identify the row and column of Pd element to compute
-  int Row = blockIdx.y * tile_width + threadIdx.y;
-  int Col = blockIdx.x * tile_width + threadIdx.x;
-  int Width = P.width;
+    __shared__ float Mshared[TILE_WIDTH][TILE_WIDTH];   // Tile size of 32x32 
+    __shared__ float Nshared[TILE_WIDTH][TILE_WIDTH];
 
-  float pValue = 0;
-  // Loop over Md and Nd tiles to compute Pd element.
-   
-  for (int m = 0; m < Width/tile_width; m++) {
-    Mds[threadIdx.y][threadIdx.x] = M.elements[Row*Width + (m * tile_width + threadIdx.x)];
-    Nds[threadIdx.y][threadIdx.x] = N.elements[Col + (m * tile_width + threadIdx.y) * Width];
+    int Row = TILE_WIDTH*blockIdx.y + threadIdx.y;
+    int Col = TILE_WIDTH*blockIdx.x + threadIdx.x;
+    double Pvalue = 0.0;
+    //Mshared[threadIdx.y][threadIdx.x] = 0.0;
+    //Nshared[threadIdx.y][threadIdx.x] = 0.0;
 
-    // Synchronize
-    __syncthreads();
-    for (int k = 0; k < tile_width; k++) {
-      pValue += Mds[threadIdx.y][k] * Nds[k][threadIdx.y];
-    __syncthreads();
+    for (int k = 0; k < (Md.width - 1)/TILE_WIDTH + 1; ++k)
+    {
+        if ((Row < Md.height) && (threadIdx.x + (k*TILE_WIDTH)) < Md.width)
+        {
+            Mshared[threadIdx.y][threadIdx.x] = Md.elements[(Row*Md.width) + threadIdx.x + (k*TILE_WIDTH)];
+        }
+        else
+        {
+            Mshared[threadIdx.y][threadIdx.x] = 0.0;
+        }            
+        if ( Col < Nd.width && (threadIdx.y + k*TILE_WIDTH) < Nd.height)
+       {
+            Nshared[threadIdx.y][threadIdx.x] = Nd.elements[(threadIdx.y + k*TILE_WIDTH)*Nd.width + Col];
+        }
+        else
+        {
+            Nshared[threadIdx.y][threadIdx.x] = 0.0;
+        }            
+        __syncthreads();
+
+        for (int j = 0; j < TILE_WIDTH; ++j)
+        {
+            Pvalue += Mshared[threadIdx.y][j] * Nshared[j][threadIdx.x];
+	     __syncthreads();
+        }
     }
-  }
-  P.elements[Row*Width+Col] = pValue;
-  
-  /* 
-  for (int k = 0; k < Width; ++k) {
-    pValue += M.elements[Row*Width+k] * N.elements[k*Width+Col];
-  }
-  P.elements[Row*Width + Col] = pValue; 
-  */
+    if (Row < Pd.height && Col < Pd.width)
+    {
+        Pd.elements[Row*Pd.width + Col] = (float)Pvalue;
+    }
 }
 
 #endif // #ifndef _MATRIXMUL_KERNEL_H_
