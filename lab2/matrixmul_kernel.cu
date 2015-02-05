@@ -52,14 +52,14 @@
 // Matrix multiplication kernel thread specification
 __global__ void MatrixMulKernel(Matrix Md, Matrix Nd, Matrix Pd)
 {
-	const int TILE_WIDTH = 32;
+    const int TILE_WIDTH = 32;
 
-    __shared__ float Mshared[TILE_WIDTH][TILE_WIDTH];   // Tile size of 32x32 
-    __shared__ float Nshared[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float Mshared[TILE_WIDTH][TILE_WIDTH + 1];   // Tile size of 32x32 
+    __shared__ float Nshared[TILE_WIDTH][TILE_WIDTH + 1];
 
     int Row = TILE_WIDTH*blockIdx.y + threadIdx.y;
     int Col = TILE_WIDTH*blockIdx.x + threadIdx.x;
-    double Pvalue = 0.0;
+    float Pvalue = 0.0;
     //Mshared[threadIdx.y][threadIdx.x] = 0.0;
     //Nshared[threadIdx.y][threadIdx.x] = 0.0;
 
