@@ -1,0 +1,29 @@
+Q: In your kernel implementation of tiled matrix multiplication, how many threads can be simultaneously scheduled for execution on a GeForce GTX-680 GPU, which contains 8 SMs?
+------
+From nvcc usage report: 
+
+8448 smem
+Used 21 Registers,
+392 bytes cmem[0]
+-------
+From DeviceQuery tool from NVIDIA:
+
+Total Shared Memory / Block = 49152 bytes
+Total Registers / block = 65536
+--------
+Threads / block: 1024
+---------
+
+We have a total of 32 * 32, which sums up to 1024 Threads / Block.
+Because the total shared memory used by one block is 8448 Bytes while the total
+shared memory space available is 49152 Bytes, there can be only 5 blocks
+executing at once, just based on the shared memory size limitations.
+
+Another limitation that may occur is the number of registers used. There are a
+total of 65536 registers in a block. Since each thread uses 21 registers, this
+limits the number of threads per block to 65536 / 21 = 3120 threads. But
+because there are only 1024 threads per block in our implementation, this
+limitation does not affect the performance.
+
+In summary, we can only use 5 blocks at once, so the total number of threads
+that can be scheduled simultaneously is 8 * 5 * 1024 = 40960 threads.
