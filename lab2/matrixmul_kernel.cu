@@ -55,13 +55,12 @@ __global__ void MatrixMulKernel(Matrix Md, Matrix Nd, Matrix Pd)
     const int TILE_WIDTH = 32;
 
     __shared__ float Mshared[TILE_WIDTH][TILE_WIDTH + 1];   // Tile size of 32x32 
+    // Padding is added to avoid bank conflicts. 
     __shared__ float Nshared[TILE_WIDTH][TILE_WIDTH + 1];
 
     int Row = TILE_WIDTH*blockIdx.y + threadIdx.y;
     int Col = TILE_WIDTH*blockIdx.x + threadIdx.x;
     float Pvalue = 0.0;
-    //Mshared[threadIdx.y][threadIdx.x] = 0.0;
-    //Nshared[threadIdx.y][threadIdx.x] = 0.0;
 
     for (int k = 0; k < (Md.width - 1)/TILE_WIDTH + 1; ++k)
     {
