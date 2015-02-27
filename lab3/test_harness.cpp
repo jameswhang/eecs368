@@ -88,22 +88,18 @@ int main(int argc, char* argv[])
             ref_2dhisto(input, INPUT_HEIGHT, INPUT_WIDTH, gold_bins);)
 
     /* Include your setup code below (temp variables, function calls, etc.) */
-    uint32_t * G_input = (uint32_t *)AllocateDevice(INPUT_HEIGHT * ((INPUT_WIDTH + 128) & 0xffffff80) * sizeof(uint32_t));
-    uint8_t * G_bins = (uint8_t *)AllocateDevice(HISTO_HEIGHT * HISTO_WIDTH * sizeof(uint8_t));
 
-    CopyToDevice(G_input, &(input[0][0]), INPUT_HEIGHT * ((INPUT_WIDTH + 128) & 0xffffff80) * sizeof(uint32_t));
+
 
     /* End of setup code */
 
     /* This is the call you will use to time your parallel implementation */
     TIME_IT("opt_2dhisto",
-            1000, // 1000
-            opt_2dhisto(G_input, INPUT_HEIGHT, INPUT_WIDTH, G_bins);)
+            1000,
+            opt_2dhisto( /*Define your own function parameters*/ );)
 
     /* Include your teardown code below (temporary variables, function calls, etc.) */
-    CopyFromDevice(kernel_bins, G_bins, HISTO_HEIGHT * HISTO_WIDTH * sizeof(uint8_t));
-    FreeDevice(G_bins);
-    FreeDevice(G_input);
+
 
 
     /* End of teardown code */
