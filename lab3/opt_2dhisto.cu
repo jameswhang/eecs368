@@ -33,7 +33,7 @@ void opt_2dhisto(uint32_t* input, size_t height, size_t width, uint8_t* bins, ui
 /* kernel verson 1: basic */
 __global__ void opt_2dhistoKernel(uint32_t *input, size_t height, size_t width, uint32_t* bins){
 
-	/*	
+	/*
 	// working
 	int col = blockDim.x * blockIdx.x + threadIdx.x;
 	int row = blockDim.y * blockIdx.y + threadIdx.y;
@@ -67,7 +67,8 @@ __global__ void opt_2dhistoKernel(uint32_t *input, size_t height, size_t width, 
 	atomicAdd(&(bins[threadIdx.x]), temp[threadIdx.x]);	
 	*/
 
-	// working
+	/*
+	// working but slower
 	__shared__ int temp[1024];
 	temp[threadIdx.x] = 0;
 	temp[threadIdx.x + 256] = 0;
@@ -89,7 +90,24 @@ __global__ void opt_2dhistoKernel(uint32_t *input, size_t height, size_t width, 
 	atomicAdd(&(bins[threadIdx.x + 256]), temp[threadIdx.x + 256]);
 	atomicAdd(&(bins[threadIdx.x + 512]), temp[threadIdx.x + 512]);
 	atomicAdd(&(bins[threadIdx.x + 768]), temp[threadIdx.x + 768]);
-	
+	*/
+
+	int col = blockDim.x * blockIdx.x + threadIdx.x;
+	int row = blockDim.y * blockIdx.y + threadIdx.y;
+	int mask = (INPUT_WIDTH + 128) & 0xFFFFFF80;
+
+	if (row == 0 && col < 1024) {
+		bins[col] = 0;
+	}
+
+	int index;
+	__syncthreads();
+	if (row < height && col < width) {
+		index = input[col + row * mask];
+		if (bins[index] < 255)
+			atomicAdd(&bins[index], 1);
+	}
+		
 }
 
 __global__ void opt_32to8Kernel(uint32_t *input, uint8_t* output, size_t length){
