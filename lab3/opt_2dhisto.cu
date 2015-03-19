@@ -70,7 +70,8 @@ __global__ void opt_2dhistoKernel(uint32_t *input, size_t height, size_t width, 
 	atomicAdd(bins + threadIdx.x, sub_hist[threadIdx.x]);
 	atomicAdd(bins + threadIdx.x, sub_hist[threadIdx.x + 512]);
 	*/
-		
+	
+	/*	
 	// working
 	int col = blockDim.x * blockIdx.x + threadIdx.x;
 	int row = blockDim.y * blockIdx.y + threadIdx.y;
@@ -83,7 +84,24 @@ __global__ void opt_2dhistoKernel(uint32_t *input, size_t height, size_t width, 
 	if (row < height && col < width) {
 		atomicAdd(&bins[input[col + row * ((INPUT_WIDTH + 128) & 0xFFFFFF80)]], 1);
 	}
+	*/
+	__shared__ int temp[1024];
+	
+	temp[threadIdx.x] = 0;
+	__syncthreads();
 
+	int i = threadIdx.x + blockIdx.x * blockDim.x;
+	int offset = blockDim.x * gridDim.x;
+	int size = HISTO_HEIGHT * HISTO_WIDTH;
+
+	while (i < size) {
+		atomicAdd(&temp[input[i]], 1);
+		i += offset;
+	} 
+	__syncthreads();
+
+	atomicAdd(&(bins[threadIdx.x]), temp[threadIdx.x]);	
+	
 }
 
 __global__ void opt_32to8Kernel(uint32_t *input, uint8_t* output, size_t length){
