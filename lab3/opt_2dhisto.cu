@@ -17,29 +17,97 @@ void opt_2dhisto(uint32_t* input, size_t height, size_t width, uint8_t* bins, ui
        histogramming kernel. Any memory allocations and
        transfers must be done outside this function */
 
-    // Kernel to calculate the bins
-    dim3 block(16, 16);
-    dim3 grid( ((INPUT_WIDTH + 128) & 0xFFFFFF80) / 16, INPUT_HEIGHT / 16);
-    opt_2dhistoKernel<<<grid, block>>>(input, height, width, g_bins);    
-    
-    cudaThreadSynchronize();  
+	// working
+	dim3 block(16, 16);
+	dim3 grid(((INPUT_WIDTH + 128) & 0xFFFFFF80) / 16, INPUT_HEIGHT / 16);
+	opt_2dhistoKernel<<<grid, block>>>(input, height, width, g_bins);
 
-    // Convert 32 bit to 8 bit
-    opt_32to8Kernel<<<HISTO_HEIGHT * HISTO_WIDTH / 512, 512>>>(g_bins, bins, 1024);
+	cudaThreadSynchronize();
 
-    cudaThreadSynchronize();
+	opt_32to8Kernel<<<HISTO_HEIGHT * HISTO_WIDTH / 512, 512>>>(g_bins, bins, 1024);
+
+	cudaThreadSynchronize();
 }
 
 /* Include below the implementation of any other functions you need */
 /* kernel verson 1: basic */
 __global__ void opt_2dhistoKernel(uint32_t *input, size_t height, size_t width, uint32_t* bins){
-     int col = blockDim.x * blockIdx.x + threadIdx.x;
-     int row = blockDim.y * blockIdx.y + threadIdx.y;
-     if (row == 0 && col < 1024)
-         bins[col] = 0;
-     __syncthreads();
-     if (row < height && col < width)
-        atomicAdd(&bins[input[col + row * ((INPUT_WIDTH + 128) & 0xFFFFFF80)]], 1);
+
+	/*
+	// working
+	int col = blockDim.x * blockIdx.x + threadIdx.x;
+	int row = blockDim.y * blockIdx.y + threadIdx.y;
+
+	if (row == 0 && col < 1024) {
+		bins[col] = 0;
+	}
+
+	__syncthreads();
+	if (row < height && col < width) {
+		atomicAdd(&bins[input[col + row * ((INPUT_WIDTH + 128) & 0xFFFFFF80)]], 1);
+	}
+	*/
+
+	/*	
+	// working
+	__shared__ int temp[1024];
+	temp[threadIdx.x] = 0;
+	__syncthreads();
+
+	int i = threadIdx.x + blockIdx.x * blockDim.x;
+	int offset = blockDim.x * gridDim.x;
+	int size = HISTO_HEIGHT * HISTO_WIDTH;
+
+	while (i < size) {
+		atomicAdd(&temp[input[i]], 1);
+		i += offset;
+	} 
+	__syncthreads();
+
+	atomicAdd(&(bins[threadIdx.x]), temp[threadIdx.x]);	
+	*/
+
+	/*
+	// working but slower
+	__shared__ int temp[1024];
+	temp[threadIdx.x] = 0;
+	temp[threadIdx.x + 256] = 0;
+	temp[threadIdx.x + 512] = 0;
+	temp[threadIdx.x + 768] = 0;
+	__syncthreads();
+
+	int i = threadIdx.x + blockIdx.x * blockDim.x;
+	int offset = blockDim.x * gridDim.x;
+	int size = HISTO_HEIGHT * HISTO_WIDTH;
+
+	while (i < size) {
+		atomicAdd(&temp[input[i]], 1);
+		i += offset;
+	} 
+	__syncthreads();
+
+	atomicAdd(&(bins[threadIdx.x]), temp[threadIdx.x]);
+	atomicAdd(&(bins[threadIdx.x + 256]), temp[threadIdx.x + 256]);
+	atomicAdd(&(bins[threadIdx.x + 512]), temp[threadIdx.x + 512]);
+	atomicAdd(&(bins[threadIdx.x + 768]), temp[threadIdx.x + 768]);
+	*/
+
+	int col = blockDim.x * blockIdx.x + threadIdx.x;
+	int row = blockDim.y * blockIdx.y + threadIdx.y;
+	int mask = (INPUT_WIDTH + 128) & 0xFFFFFF80;
+
+	if (row == 0 && col < 1024) {
+		bins[col] = 0;
+	}
+
+	int index;
+	__syncthreads();
+	if (row < height && col < width) {
+		index = input[col + row * mask];
+		if (bins[index] < 255)
+			atomicAdd(&bins[index], 1);
+	}
+		
 }
 
 __global__ void opt_32to8Kernel(uint32_t *input, uint8_t* output, size_t length){
